@@ -1,0 +1,552 @@
+/*-- scss:defaults --*/
+
+$primary: #2f3441;
+$secondary: #d4a017;
+$success: #5c8d89;
+$info: #6c8ebf;
+$warning: #f2b134;
+$danger: #c44536;
+$body-bg: #f5f1ea;
+$body-color: #222222;
+
+/*-- scss:rules --*/
+
+.navbar {
+  background: #2f3441 !important;
+}
+
+.navbar-title,
+.navbar-title a,
+.navbar-author,
+.nav-link {
+  color: #ffffff !important;
+}
+
+.quarto-dashboard-content {
+  background: #f5f1ea;
+}
+
+.card {
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 5px 18px rgba(0,0,0,.10);
+  overflow: hidden;
+}
+
+.card h2 {
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: #2f3441;
+  margin-bottom: .6rem;
+}
+
+/* CONTEXTO */
+
+.context-box {
+  background: linear-gradient(160deg, #2f3441, #4b5365);
+  color: white;
+  border-radius: 18px;
+  padding: 22px;
+  min-height: 82vh;
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+}
+
+.context-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 18px;
+}
+
+.context-text {
+  font-size: 1rem;
+  line-height: 1.48;
+}
+
+.cid {
+  background: #d4a017;
+  color: #222;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.pancreas-icon {
+  font-size: 4rem;
+  text-align: center;
+  margin-top: 24px;
+}
+
+.source {
+  font-size: .78rem;
+  color: #6b6258;
+  margin-top: 18px;
+}
+
+.context-box .source {
+  color: #f6e9c8;
+  margin-top: 48px;
+}
+
+/* FILTROS */
+
+.filter-panel {
+  background: #fbf8f1;
+  border-radius: 18px;
+  padding: 20px;
+  min-height: 82vh;
+  box-shadow: 0 4px 14px rgba(0,0,0,.08);
+}
+
+.form-group label {
+  font-weight: 800;
+  color: #2f3441;
+}
+
+.selectize-input,
+.irs-line,
+.irs-bar {
+  border-radius: 10px !important;
+}
+
+.irs-bar,
+.irs-single {
+  background: #d4a017 !important;
+  border-color: #d4a017 !important;
+}
+
+/* CARDS DE ESTATÍSTICAS */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 14px;
+}
+
+.stat-card {
+  color: white;
+  border-radius: 16px;
+  padding: 18px;
+  min-height: 118px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+}
+
+.stat-card .label {
+  font-size: .82rem;
+  opacity: .92;
+  font-weight: 700;
+}
+
+.stat-card .value {
+  font-size: 1.55rem;
+  line-height: 1.15;
+  font-weight: 900;
+  margin-top: 8px;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.stat-card .small {
+  font-size: .78rem;
+  margin-top: 8px;
+  opacity: .9;
+}
+
+.stat-card.red {
+  background: linear-gradient(135deg, #c44536, #8f241b);
+}
+
+.stat-card.purple {
+ background: linear-gradient(135deg, #674ea7, #3f2c70);  
+}
+
+.stat-card.green {
+  background: linear-gradient(135deg, #5c8d89, #356560);
+}
+
+.stat-card.blue {
+  background: linear-gradient(135deg, #3273a8, #18375f);
+}
+
+.stat-card.teal {
+  background: linear-gradient(135deg, #238b8b, #12585a);
+}
+
+.stat-card.pink {
+  background: linear-gradient(135deg, #d64b86, #98315d);
+}
+
+/* FATORES EPIDEMIOLÓGICOS */
+
+.info-grid-readable {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+.info-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+
+  border-left: 7px solid #d4a017;
+  box-shadow: 0 3px 10px rgba(0,0,0,.08);
+
+  min-height: 220px;
+
+  font-size: .95rem;
+  line-height: 1.45;
+}
+
+.mini-title {
+  color: #2f3441;
+  font-weight: 900;
+  margin-bottom: 2px;
+  line-height: 1.1;
+}
+
+.info-card strong {
+  margin: 0;
+  padding: 0;
+}
+
+.info-card p {
+  margin: 0;
+}
+
+.info-card br {
+  line-height: 1;
+}
+
+.alert-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 7px;
+}
+
+.alert-item {
+  background: #f7e7df;
+  color: #8f241b;
+  padding: 7px;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: .82rem;
+}
+
+/* PLOTLY */
+
+.plotly,
+.html-widget {
+  max-width: 100%;
+}
+
+/* RESPONSIVO */
+
+@media (max-width: 1000px) {
+  .stat-grid,
+  .info-grid-readable,
+  .alert-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.info-card {
+  min-height: 120px;
+}
+.comentarios-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 14px;
+}
+
+.comentario-card {
+  color: white;
+  border-radius: 16px;
+  padding: 18px;
+  min-height: 120px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  font-size: .95rem;
+  line-height: 1.4;
+}
+
+.comentario-card strong {
+  font-size: 1.05rem;
+}
+
+.comentario-card.roxo {
+  background: linear-gradient(135deg, #674ea7, #3f2c70);
+}
+
+.comentario-card.verde {
+  background: linear-gradient(135deg, #5c8d89, #356560);
+}
+
+.comentario-card.azul {
+  background: linear-gradient(135deg, #3273a8, #18375f);
+}
+
+.comentario-card.vinho {
+  background: linear-gradient(135deg, #c44536, #8f241b);
+}
+
+.comentarios-grid-vertical {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.comentario-card {
+  color: white;
+  border-radius: 14px;
+  padding: 14px;
+  min-height: 85px;
+  font-size: .9rem;
+  line-height: 1.35;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+}
+.bslib-card {
+  justify-content: flex-start !important;
+}
+
+.card {
+  align-items: stretch !important;
+}
+
+.card-body {
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  padding-top: 10px !important;
+}
+
+.quarto-dashboard .card {
+  min-height: 0 !important;
+}
+
+.quarto-dashboard .html-widget,
+.quarto-dashboard .plotly {
+  margin-top: 0 !important;
+}
+.stat-card.purple {
+  background: linear-gradient(135deg, #674ea7, #3f2c70) !important;
+  color: #ffffff !important;
+}
+
+.stat-card.purple .label,
+.stat-card.purple .value,
+.stat-card.purple .small {
+  color: #ffffff !important;
+}
+.risk-clean {
+  list-style: none;
+  padding-left: 0;
+  margin: 12px 0 0 0;
+}
+
+.risk-clean li {
+  margin-bottom: 8px;
+  padding-left: 18px;
+  position: relative;
+  font-weight: 700;
+  color: #2f3441;
+  line-height: 1.25;
+}
+
+.risk-clean li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #d4a017;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.fatores-box {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fator-principal,
+.fator-section {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 18px;
+  border-left: 7px solid #d4a017;
+  box-shadow: 0 3px 10px rgba(0,0,0,.08);
+}
+
+.fator-principal p,
+.fator-section p {
+  margin: 8px 0 0 0;
+  line-height: 1.4;
+}
+
+.risk-line {
+  margin-top: 8px;
+  background: #f7e7df;
+  color: #8f241b;
+  border-radius: 12px;
+  padding: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.panel-tabset .nav-tabs .nav-link {
+  color: #4b5563 !important;
+  font-weight: 600;
+  padding: 12px 20px;
+}
+
+.panel-tabset .nav-tabs .nav-link.active {
+  background: #483D8B !important;
+  color: white !important;
+  border-radius: 8px 8px 0 0;
+}
+.filtros-juntos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filtros-juntos .form-group {
+  margin-bottom: 6px !important;
+}
+
+.filtros-juntos .shiny-input-container {
+  margin-bottom: 0 !important;
+}
+#rio-de-janeiro .filter-panel {
+  min-height: auto !important;
+  padding: 16px !important;
+}
+
+#rio-de-janeiro .shiny-input-container,
+#rio-de-janeiro .form-group {
+  margin-bottom: 6px !important;
+}
+
+#rio-de-janeiro .irs {
+  margin-top: -6px !important;
+  margin-bottom: -4px !important;
+}
+.filtro-rj {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 14px !important;
+}
+
+.filtro-rj .shiny-input-container {
+  margin-bottom: 4px !important;
+}
+
+.filtro-rj .form-group {
+  margin-bottom: 4px !important;
+}
+
+.filtro-rj label {
+  margin-bottom: 2px !important;
+}
+
+.filtro-rj .irs {
+  margin-top: -8px !important;
+  margin-bottom: -10px !important;
+}
+/* FILTROS RJ COMPACTOS */
+
+.filtro-rj-compacto {
+  min-height: 0 !important;
+  height: fit-content !important;
+  padding: 12px 14px !important;
+}
+
+.filtro-rj-compacto .cell {
+  margin-bottom: 0 !important;
+}
+
+.filtro-rj-compacto .cell-output-display {
+  margin: 0 !important;
+}
+
+.filtro-rj-compacto .shiny-input-container {
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+.filtro-rj-compacto .form-group {
+  margin-bottom: 4px !important;
+}
+
+.filtro-rj-compacto label {
+  margin-bottom: 2px !important;
+  font-size: 0.86rem !important;
+}
+
+.filtro-rj-compacto .selectize-control {
+  margin-bottom: 0 !important;
+}
+
+.filtro-rj-compacto .selectize-input {
+  min-height: 32px !important;
+  padding: 5px 8px !important;
+  font-size: 0.86rem !important;
+}
+
+.filtro-rj-compacto .irs {
+  margin-top: -8px !important;
+  margin-bottom: -12px !important;
+}
+
+.filtro-rj-compacto .source {
+  margin-top: 4px !important;
+}
+.rj-filtros-shiny .shiny-input-container {
+  margin-bottom: 6px !important;
+}
+
+.rj-filtros-shiny .form-group {
+  margin-bottom: 6px !important;
+}
+
+.rj-filtros-shiny label {
+  margin-bottom: 2px !important;
+  font-size: 0.88rem !important;
+}
+
+.rj-filtros-shiny .selectize-control {
+  margin-bottom: 0 !important;
+}
+
+.rj-filtros-shiny .selectize-input {
+  min-height: 30px !important;
+  padding: 4px 8px !important;
+  font-size: 0.88rem !important;
+}
+
+.rj-filtros-shiny .irs {
+  margin-top: -8px !important;
+  margin-bottom: -12px !important;
+}
+/* FATORES DE RISCO BONITO */
+
+.risk-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.risk-item {
+  background: #f7e7df;
+  color: #8f241b;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.risk-item:last-child {
+  grid-column: 1 / -1;
+}

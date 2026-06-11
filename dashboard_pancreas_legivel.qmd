@@ -1,0 +1,886 @@
+---
+title: "Câncer de Pâncreas"
+author: "Milena Branco Labre de Oliveira Rodrigues"
+format:
+  dashboard:
+    orientation: columns
+    scrolling: true
+    theme:
+      - sandstone
+      - custom_pancreas_legivel.scss
+server: shiny
+execute:
+  warning: false
+  message: false
+---
+
+
+```{r}
+#| label: setup
+#| context: setup
+
+library(shiny)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(plotly)
+library(scales)
+library(DT)
+library(sf)
+
+options(scipen = 999)
+theme_set(theme_minimal(base_size = 12))
+
+if (file.exists("dados_pancreas.rds")) {
+  dados_cancer <- readRDS("dados_pancreas.rds")
+} else {
+  dados_cancer <- readxl::read_excel("MortalidadeCancer.xlsx")
+}
+
+dados_cancer <- dados_cancer |>
+  mutate(
+    ano = as.integer(ano),
+    codigo = as.character(codigo),
+    taxa = if_else(populacao > 0, (n / populacao) * 100000, NA_real_),
+    nivel = case_when(
+      local == "Brasil" ~ "Brasil",
+      local %in% c("Norte", "Nordeste", "Sudeste", "Sul", "Centro-Oeste") ~ "Região",
+      str_length(codigo) == 2 ~ "Estado",
+      str_length(codigo) == 6 ~ "Município RJ",
+      TRUE ~ "Outro"
+    )
+  ) |>
+  filter(Cancer == "Câncer de Pancreas")
+
+faixas_ordem <- c(
+  "todas as idades", "0-4 anos", "5-9 anos", "10-14 anos", "15-19 anos",
+  "20-24 anos", "25-29 anos", "30-34 anos", "35-39 anos", "40-44 anos",
+  "45-49 anos", "50-54 anos", "55-59 anos", "60-64 anos", "65-69 anos",
+  "70-74 anos", "75-79 anos", "80-mais"
+)
+
+dados_cancer <- dados_cancer |>
+  mutate(
+    sexo = as.character(sexo),
+    faixa = factor(as.character(faixa), levels = faixas_ordem)
+  )
+
+anos <- sort(unique(dados_cancer$ano))
+ultimo_ano <- max(anos, na.rm = TRUE)
+primeiro_ano <- min(anos, na.rm = TRUE)
+regioes <- c("Brasil", "Norte", "Nordeste", "Sudeste", "Sul", "Centro-Oeste")
+municipios_rj <- dados_cancer |>
+  filter(nivel == "Município RJ") |>
+  distinct(local) |>
+  arrange(local) |>
+  pull(local)
+
+mapa_rj_pancreas_sf <- if (file.exists("mapa_rj_pancreas.rds")) {
+  readRDS("mapa_rj_pancreas.rds")
+} else {
+  NULL
+}
+
+fmt_num <- function(x) number(x, accuracy = 1, decimal.mark = ",", big.mark = ".")
+fmt_taxa <- function(x) number(x, accuracy = 0.01, decimal.mark = ",", big.mark = ".")
+fmt_pct <- function(x) paste0(number(x, accuracy = 0.1, decimal.mark = ",", big.mark = "."), "%")
+
+base_brasil <- function(ano_sel, sexo_sel = "Ambos") {
+  dados_cancer |>
+    filter(
+      local == "Brasil",
+      sexo == sexo_sel,
+      faixa == "todas as idades",
+      ano == ano_sel
+    ) |>
+    summarise(
+      n = sum(n, na.rm = TRUE),
+      populacao = sum(populacao, na.rm = TRUE),
+      taxa = if_else(populacao > 0, (n / populacao) * 100000, NA_real_),
+      .groups = "drop"
+    )
+}
+```
+
+# Contextualização
+
+## Column {width="28%"}
+
+::: {.context-box}
+<div class="context-title">O que é o câncer de pâncreas?</div>
+
+<div class="context-text">
+Surge quando células do pâncreas passam a crescer de forma descontrolada, formando um tumor maligno.
+<br><br>
+O diagnóstico costuma ser difícil nas fases iniciais, pois os sintomas podem ser inespecíficos. Por isso, estudar a mortalidade ajuda a compreender a relevância epidemiológica da doença.
+<br><br>
+<strong>Código CID-10:</strong> <span class="cid">C25</span> — Neoplasia maligna do pâncreas.
+</div>
+
+<div class="pancreas-icon">🧬</div>
+
+<div class="source">Fonte: SIM/DATASUS · População DATASUS/IBGE · microdatasus</div>
+:::
+
+## Column {width="36%"}
+
+::: {.card}
+## Indicadores epidemiológicos
+
+```{r}
+uiOutput("cards_contexto")
+```
+
+```{r}
+sliderInput("ano_ctx", "Ano das estatísticas", min = min(anos), max = max(anos), value = ultimo_ano, step = 1, sep = "")
+```
+:::
+
+::: {.card}
+## Total de óbitos no Brasil
+
+```{r}
+plotlyOutput("grafico_obitos_brasil", height = "330px")
+```
+:::
+
+## Column {width="36%"}
+
+::: {.card}
+## Fatores epidemiológicos
+<div class="fatores-box">
+
+<div class="fator-principal">
+<div class="mini-title">Onde o tumor se desenvolve</div>
+<p><strong>Pâncreas</strong>, principalmente nos ductos pancreáticos. Em estágios avançados, pode atingir vias biliares, fígado, peritônio e linfonodos.</p>
+</div>
+
+<div class="fator-section">
+<div class="mini-title">Sinais de alerta</div>
+<div class="alert-grid">
+<div class="alert-item">Dor abdominal</div>
+<div class="alert-item">Perda de peso</div>
+<div class="alert-item">Icterícia</div>
+<div class="alert-item">Falta de apetite</div>
+<div class="alert-item">Náuseas</div>
+<div class="alert-item">Alterações digestivas</div>
+</div>
+</div>
+
+<div class="fator-section">
+<div class="mini-title">Fatores de risco</div>
+
+<div class="risk-grid">
+  <div class="risk-item">Idade avançada</div>
+  <div class="risk-item">Tabagismo</div>
+  <div class="risk-item">Obesidade</div>
+  <div class="risk-item">Sedentarismo</div>
+  <div class="risk-item">Diabetes</div>
+  <div class="risk-item">Pancreatite crônica</div>
+  <div class="risk-item">Histórico familiar</div>
+</div>
+
+</div>
+
+
+
+<div class="fator-section">
+<div class="mini-title">Prevenção e tratamento</div>
+<p><strong>Prevenção:</strong> não fumar, manter peso saudável, reduzir álcool e adotar alimentação equilibrada.</p>
+<p><strong>Tratamento:</strong> cirurgia, quimioterapia, radioterapia e cuidados paliativos quando indicados.</p>
+</div>
+
+</div>
+:::
+
+# Taxas de Mortalidade
+
+## Column {width="22%"}
+
+::: {.filter-panel}
+## Painel de seleção
+
+```{r}
+selectInput("sexo_taxa", "Sexo:", choices = c("Ambos", "Masculino", "Feminino"), selected = "Ambos")
+
+selectInput("nivel_geo", "Nível geográfico:", choices = c("Brasil", "Regiões", "Estados"), selected = "Regiões")
+
+sliderInput("ano_taxa", "Ano:", min = min(anos), max = max(anos), value = ultimo_ano, step = 1, sep = "")
+
+selectInput("local_piramide", "Local da pirâmide etária:", choices = regioes, selected = "Brasil")
+```
+
+<div class="source">Fonte: SIM/DATASUS · microdatasus</div>
+:::
+
+## Column {width="78%"}
+
+::: {.panel-tabset}
+
+### Comparação geográfica
+
+::: {.card height="370px"}
+## Comparação regional e estadual
+
+```{r}
+plotlyOutput("grafico_comparacao_espacial", height = "300px")
+```
+:::
+
+::: {.card height="370px"}
+## Heatmap Brasil e regiões
+
+```{r}
+plotlyOutput("grafico_heatmap_regioes", height = "300px")
+```
+:::
+
+::: {.card}
+<div class="comentarios-grid-vertical">
+
+<div class="comentario-card verde">
+<strong>📍 Desigualdade regional</strong><br>
+A região Sul apresentou as maiores taxas de mortalidade no período mais recente.
+</div>
+
+<div class="comentario-card roxo">
+<strong>🗺️ Comparação espacial</strong><br>
+O painel permite comparar Brasil, grandes regiões e estados segundo sexo e ano selecionados.
+</div>
+
+</div>
+:::
+
+### Perfil demográfico
+
+::: {.card height="370px"}
+## Evolução temporal da mortalidade
+
+```{r}
+plotlyOutput("grafico_taxa_tempo", height = "300px")
+```
+:::
+
+::: {.card height="370px"}
+## Pirâmide etária
+
+```{r}
+plotlyOutput("grafico_piramide", height = "300px")
+```
+:::
+
+::: {.card}
+<div class="comentarios-grid-vertical">
+
+<div class="comentario-card azul">
+<strong>👴 Envelhecimento populacional</strong><br>
+As maiores taxas concentram-se nas faixas etárias mais avançadas.
+</div>
+
+<div class="comentario-card vinho">
+<strong>👨 Diferenças por sexo</strong><br>
+Homens apresentaram taxas superiores às observadas entre mulheres.
+</div>
+
+<div class="comentario-card roxo">
+<strong>🔺 Crescimento da mortalidade</strong><br>
+Entre 2001 e 2024 observou-se aumento expressivo da mortalidade por câncer de pâncreas no Brasil.
+</div>
+
+</div>
+:::
+
+:::
+# Rio de Janeiro
+
+## Column {width="10%"}
+
+::: {.filter-panel .filtro-rj-compacto}
+## Painel de seleção
+
+```{r}
+
+tagList(
+  tags$style(HTML("
+    .rj-controles .shiny-input-container {
+      margin-bottom: 0px !important;
+    }
+
+    .rj-controles .form-group {
+      margin-bottom: 0px !important;
+    }
+
+    .rj-controles label {
+      margin-bottom: 2px !important;
+      font-size: 0.86rem !important;
+    }
+
+    .rj-controles .selectize-input {
+      min-height: 30px !important;
+      padding: 4px 8px !important;
+      font-size: 0.86rem !important;
+    }
+
+    .rj-controles .irs {
+      margin-top: -10px !important;
+      margin-bottom: -18px !important;
+    }
+  ")),
+
+  div(
+    class = "rj-controles",
+
+    div(
+      style = "margin-bottom: 2px;",
+      selectInput(
+        "municipio_rj",
+        "Município:",
+        choices = municipios_rj,
+        selected = if ("Rio de Janeiro (Município)" %in% municipios_rj) {
+          "Rio de Janeiro (Município)"
+        } else if ("Rio de Janeiro" %in% municipios_rj) {
+          "Rio de Janeiro"
+        } else {
+          municipios_rj[1]
+        }
+      )
+    ),
+
+    div(
+      style = "margin-top: -6px; margin-bottom: -12px;",
+      sliderInput(
+        "ano_rj",
+        "Ano:",
+        min = min(anos),
+        max = max(anos),
+        value = ultimo_ano,
+        step = 1,
+        sep = ""
+      )
+    ),
+
+    div(
+      style = "margin-top: -4px;",
+      selectInput(
+        "sexo_rj",
+        "Sexo:",
+        choices = c("Ambos", "Masculino", "Feminino"),
+        selected = "Ambos"
+      )
+    )
+  )
+)
+```
+
+
+<div class="source">Fonte: SIM/DATASUS · microdatasus</div>
+:::
+
+## Column {width="35%"}
+
+::: {.card}
+## Indicadores do município selecionado
+
+```{r}
+uiOutput("cards_rj")
+```
+:::
+
+::: {.card}
+## Taxa de mortalidade municipal
+
+```{r}
+plotlyOutput("grafico_taxa_municipal", height = "430px")
+```
+:::
+
+## Column {width="50%"}
+
+::: {.card height="430px"}
+
+## Mapa dos municípios do RJ
+
+```{r}
+plotlyOutput("grafico_mapa_rj", height = "370px")
+```
+
+:::
+
+::: {.card height="320px"}
+
+## Top 5 municípios
+
+```{r}
+plotlyOutput("top5_municipios", height = "260px")
+```
+
+:::
+
+::: {.card}
+
+## Comentários sobre os municípios do RJ
+
+<div class="comentarios-grid-vertical">
+
+<div class="comentario-card roxo">
+<strong>Distribuição espacial</strong><br>
+Diferenças importantes nas taxas de mortalidade entre os municípios fluminenses.
+</div>
+
+<div class="comentario-card verde">
+<strong>Municípios pequenos</strong><br>
+Pequenas populações podem gerar taxas elevadas mesmo com poucos óbitos.
+</div>
+
+<div class="comentario-card azul">
+<strong>Tendência temporal</strong><br>
+A mortalidade apresenta crescimento ao longo do período analisado.
+</div>
+
+<div class="comentario-card vinho">
+<strong>Comparação municipal</strong><br>
+O município selecionado pode ser comparado ao padrão estadual.
+</div>
+
+</div>
+
+:::
+
+
+
+```{r}
+#| context: server
+
+output$cards_contexto <- renderUI({
+  ano_escolhido <- input$ano_ctx %||% ultimo_ano
+  d_ano <- base_brasil(ano_escolhido, "Ambos")
+ taxa_2001 <- dados_cancer |>
+  filter(
+    local == "Brasil",
+    sexo == "Ambos",
+    faixa == "todas as idades",
+    ano == primeiro_ano
+  ) |>
+  pull(taxa) |>
+  first()
+
+taxa_ano <- dados_cancer |>
+  filter(
+    local == "Brasil",
+    sexo == "Ambos",
+    faixa == "todas as idades",
+    ano == ano_escolhido
+  ) |>
+  pull(taxa) |>
+  first()
+
+var <- 100 * (taxa_ano - taxa_2001) / taxa_2001
+
+
+
+  reg_top <- dados_cancer |>
+    filter(nivel == "Região", ano == ano_escolhido, sexo == "Ambos", faixa == "todas as idades") |>
+    arrange(desc(taxa)) |>
+    slice(1)
+
+  sexo_top <- dados_cancer |>
+    filter(local == "Brasil", ano == ano_escolhido, sexo != "Ambos", faixa == "todas as idades") |>
+    arrange(desc(taxa)) |>
+    slice(1)
+
+  tags$div(class = "stat-grid",
+    tags$div(class = "stat-card red",
+      tags$div(class = "label", paste0("Óbitos em ", ano_escolhido)),
+      tags$div(class = "value", fmt_num(d_ano$n)),
+      tags$div(class = "small", "Brasil · todas as idades")
+    ),
+    tags$div(class = "stat-card purple",
+      tags$div(class = "label", "Variação da taxa"),
+      tags$div(class = "value", fmt_pct(var)),
+     tags$div(class = "small", paste0(primeiro_ano, "–", ano_escolhido))
+    ),
+    tags$div(class = "stat-card green",
+      tags$div(class = "label", paste0("Região com maior taxa em ", ano_escolhido)),
+      tags$div(class = "value", reg_top$local),
+      tags$div(class = "small", paste0(fmt_taxa(reg_top$taxa), " por 100 mil"))
+    ),
+    tags$div(class = "stat-card blue",
+      tags$div(class = "label", "Maior mortalidade"),
+      tags$div(class = "value", as.character(sexo_top$sexo)),
+      tags$div(class = "small", "Comparação por sexo")
+    )
+  )
+})
+
+output$grafico_obitos_brasil <- renderPlotly({
+  df <- dados_cancer |>
+    filter(local == "Brasil", sexo == "Ambos", faixa == "todas as idades")
+
+  p <- ggplot(df, aes(
+    ano, n,
+    text = paste0("Ano: ", ano, "<br>Óbitos: ", fmt_num(n), "<br>Taxa: ", fmt_taxa(taxa))
+  )) +
+    geom_line(color = "#2f475e", linewidth = 1.1) +
+    geom_point(color = "#2f475e", size = 2) +
+    geom_smooth(method = "loess", se = FALSE, color = "#238b8b", linetype = "dashed", linewidth = .9) +
+    labs(title = NULL, x = NULL, y = "Óbitos") +
+    scale_y_continuous(labels = label_number(decimal.mark = ",", big.mark = "."))
+
+  ggplotly(p, tooltip = "text") |>
+    layout(hovermode = "x unified", margin = list(l = 50, r = 20, b = 45, t = 20))
+})
+
+output$grafico_comparacao_espacial <- renderPlotly({
+  nivel <- input$nivel_geo
+
+  if (nivel == "Brasil") {
+    df <- dados_cancer |>
+      filter(local == "Brasil", sexo == input$sexo_taxa, faixa == "todas as idades", ano == input$ano_taxa)
+  } else if (nivel == "Regiões") {
+    df <- dados_cancer |>
+      filter(nivel == "Região", sexo == input$sexo_taxa, faixa == "todas as idades", ano == input$ano_taxa)
+  } else {
+    df <- dados_cancer |>
+      filter(nivel == "Estado", sexo == input$sexo_taxa, faixa == "todas as idades", ano == input$ano_taxa) |>
+      arrange(desc(taxa)) |>
+      slice_head(n = 15)
+  }
+
+  validate(need(nrow(df) > 0, "Sem dados para esse filtro."))
+
+  df <- df |> mutate(local = reorder(local, taxa))
+
+p <- ggplot(df, aes(
+  taxa, local,
+  text = paste0(local, "<br>Taxa: ", fmt_taxa(taxa), " por 100 mil<br>Óbitos: ", fmt_num(n))
+)) +
+  geom_col(fill = "#3f2c70", width = 0.72) +
+  geom_text(
+    aes(
+      x = taxa / 2,
+      label = fmt_taxa(taxa)
+    ),
+    color = "white",
+    fontface = "bold",
+    size = 4
+  ) +
+  labs(
+    title = paste(nivel, "·", input$ano_taxa),
+    x = "Taxa por 100 mil habitantes",
+    y = NULL
+  )
+})
+
+output$grafico_taxa_tempo <- renderPlotly({
+
+  if (input$nivel_geo == "Brasil") {
+
+    df <- dados_cancer |>
+      filter(
+        local == "Brasil",
+        sexo == input$sexo_taxa,
+        faixa == "todas as idades"
+      )
+
+    titulo <- "Brasil"
+
+  } else if (input$nivel_geo == "Regiões") {
+
+    df <- dados_cancer |>
+      filter(
+        nivel == "Região",
+        sexo == input$sexo_taxa,
+        faixa == "todas as idades"
+      )
+
+    titulo <- "Regiões"
+
+  } else {
+
+    df <- dados_cancer |>
+      filter(
+        nivel == "Estado",
+        sexo == input$sexo_taxa,
+        faixa == "todas as idades"
+      )
+
+    titulo <- "Estados"
+
+  }
+
+  validate(need(nrow(df) > 0, "Sem dados para esse filtro."))
+
+  p <- ggplot(
+    df,
+    aes(
+      x = ano,
+      y = taxa,
+      color = local,
+      group = local,
+      text = paste0(
+        local,
+        "<br>Ano: ", ano,
+        "<br>Taxa: ", fmt_taxa(taxa)
+      )
+    )
+  ) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 1.8) +
+    geom_vline(
+      xintercept = input$ano_taxa,
+      color = "#238b8b",
+      linetype = "dashed"
+    ) +
+    labs(
+      title = titulo,
+      x = NULL,
+      y = "Taxa",
+      color = NULL
+    ) +
+    theme(legend.position = "bottom")
+
+  ggplotly(p, tooltip = "text") |>
+  layout(
+    hovermode = "closest",
+    margin = list(l = 50, r = 20, b = 70, t = 45),
+    legend = list(
+      orientation = "h",
+      x = 0,
+      y = -0.25
+    )
+  )
+})
+
+  
+output$grafico_heatmap_regioes <- renderPlotly({
+  df <- dados_cancer |>
+    filter(local %in% regioes, sexo == input$sexo_taxa, faixa == "todas as idades", ano == input$ano_taxa)
+
+  validate(need(nrow(df) > 0, "Sem dados para esse filtro."))
+
+  p <- ggplot(df, aes(
+    x = local, y = "", fill = taxa,
+    text = paste0(local, "<br>Taxa: ", fmt_taxa(taxa))
+  )) +
+    geom_tile(color = "white", linewidth = 1.5) +
+    geom_text(aes(label = fmt_taxa(taxa)), fontface = "bold", size = 3.4) +
+    scale_fill_gradient(low = "#fee5d9", high = "#3f2c70") +
+    labs(title = paste("Comparação espacial ·", input$ano_taxa), x = NULL, y = NULL, fill = "Taxa") +
+    theme(axis.text.y = element_blank(), axis.ticks = element_blank())
+
+  ggplotly(p, tooltip = "text") |>
+    layout(margin = list(l = 20, r = 20, b = 80, t = 45))
+})
+
+output$grafico_piramide <- renderPlotly({
+  df <- dados_cancer |>
+    filter(
+      local == input$local_piramide,
+      sexo %in% c("Masculino", "Feminino"),
+      faixa != "todas as idades",
+      ano == input$ano_taxa
+    ) |>
+    mutate(valor = if_else(sexo == "Masculino", -taxa, taxa))
+
+  validate(need(nrow(df) > 0, "Sem dados para esse filtro."))
+
+  p <- ggplot(df, aes(
+    valor, faixa, fill = sexo,
+    text = paste0(sexo, "<br>", faixa, "<br>Taxa: ", fmt_taxa(abs(valor)))
+  )) +
+    geom_col(width = .78) +
+    scale_x_continuous(labels = function(x) abs(x)) +
+    scale_fill_manual(values = c("Masculino" = "#2b99e6", "Feminino" = "#e91e63")) +
+    labs(title = paste(input$local_piramide, "·", input$ano_taxa), x = NULL, y = "Idade", fill = NULL)
+
+  ggplotly(p, tooltip = "text") |>
+    layout(legend = list(orientation = "h", x = .2, y = 1.12), margin = list(l = 85, r = 20, b = 45, t = 45))
+})
+
+output$cards_rj <- renderUI({
+  d <- dados_cancer |>
+    filter(
+      nivel == "Município RJ",
+      local == input$municipio_rj,
+      sexo == input$sexo_rj,
+      faixa == "todas as idades",
+      ano == input$ano_rj
+    ) |>
+    slice(1)
+
+  sex <- dados_cancer |>
+    filter(
+      nivel == "Município RJ",
+      local == input$municipio_rj,
+      sexo %in% c("Masculino", "Feminino"),
+      faixa == "todas as idades",
+      ano == input$ano_rj
+    ) |>
+    select(sexo, n) |>
+    tidyr::pivot_wider(names_from = sexo, values_from = n, values_fill = 0)
+
+  masc <- if ("Masculino" %in% names(sex)) sex$Masculino else 0
+  fem <- if ("Feminino" %in% names(sex)) sex$Feminino else 0
+
+  tags$div(class = "stat-grid",
+    tags$div(class = "stat-card red",
+      tags$div(class = "label", "Óbitos"),
+      tags$div(class = "value", fmt_num(d$n)),
+      tags$div(class = "small", input$municipio_rj)
+    ),
+    tags$div(class = "stat-card teal",
+      tags$div(class = "label", "População"),
+      tags$div(class = "value", fmt_num(d$populacao)),
+      tags$div(class = "small", input$ano_rj)
+    ),
+    tags$div(class = "stat-card blue",
+      tags$div(class = "label", "Óbitos masculinos"),
+      tags$div(class = "value", fmt_num(masc)),
+      tags$div(class = "small", "Todas as idades")
+    ),
+    tags$div(class = "stat-card pink",
+      tags$div(class = "label", "Óbitos femininos"),
+      tags$div(class = "value", fmt_num(fem)),
+      tags$div(class = "small", "Todas as idades")
+    )
+  )
+})
+
+output$grafico_taxa_municipal <- renderPlotly({
+  df <- dados_cancer |>
+    filter(
+      nivel == "Município RJ",
+      local == input$municipio_rj,
+      sexo == input$sexo_rj,
+      faixa == "todas as idades"
+    )
+
+  validate(need(nrow(df) > 0, "Sem dados para esse município."))
+
+  p <- ggplot(df, aes(
+    ano, taxa,
+    text = paste0("Ano: ", ano, "<br>Taxa: ", fmt_taxa(taxa), "<br>Óbitos: ", fmt_num(n))
+  )) +
+    geom_line(color = "#2f475e", linewidth = 1.1) +
+    geom_point(color = "#2f475e", size = 2) +
+    geom_smooth(method = "loess", se = FALSE, color = "#238b8b", linetype = "dashed") +
+    geom_vline(xintercept = input$ano_rj, color = "#238b8b", linetype = "dashed") +
+    labs(title = input$municipio_rj, x = NULL, y = "Taxa por 100 mil")
+
+  ggplotly(p, tooltip = "text") |>
+    layout(hovermode = "x unified", margin = list(l = 50, r = 20, b = 45, t = 45))
+})
+
+output$grafico_mapa_rj <- renderPlotly({
+  if (is.null(mapa_rj_pancreas_sf)) {
+    df <- dados_cancer |>
+      filter(nivel == "Município RJ", sexo == input$sexo_rj, faixa == "todas as idades", ano == input$ano_rj) |>
+      arrange(desc(taxa)) |>
+      slice_head(n = 20) |>
+      mutate(local = reorder(local, taxa))
+
+    validate(need(nrow(df) > 0, "Sem dados municipais para esse filtro."))
+
+    p <- ggplot(df, aes(
+      taxa, local,
+      text = paste0(local, "<br>Taxa: ", fmt_taxa(taxa))
+    )) +
+      geom_col(fill = "#3f2c70") +
+      labs(
+        title = "Ranking municipal — mapa não encontrado na pasta",
+        subtitle = "Coloque mapa_rj_pancreas.rds na mesma pasta do dashboard para exibir o mapa.",
+        x = "Taxa por 100 mil",
+        y = NULL
+      )
+
+    return(ggplotly(p, tooltip = "text") |> layout(margin = list(l = 120, r = 20, b = 45, t = 60)))
+  }
+
+  mapa <- mapa_rj_pancreas_sf |>
+    filter(sexo == input$sexo_rj, ano == input$ano_rj)
+
+  validate(need(nrow(mapa) > 0, "Sem dados no mapa para esse filtro."))
+
+  p <- ggplot(mapa) +
+    geom_sf(
+      aes(
+        fill = taxa,
+        text = paste0(local, "<br>Taxa: ", fmt_taxa(taxa), "<br>Óbitos: ", fmt_num(n))
+      ),
+      color = "white",
+      linewidth = .12
+    ) +
+    scale_fill_gradient(low = "#fee5d9", high = "#3f2c70", na.value = "grey90") +
+    labs(title = paste("Rio de Janeiro ·", input$ano_rj), fill = "Taxa por\n100 mil") +
+    theme_void()
+
+  ggplotly(p, tooltip = "text") |>
+    layout(margin = list(l = 20, r = 20, b = 20, t = 50))
+})
+
+output$tabela_ranking_rj <- renderDT({
+  dados_cancer |>
+    filter(
+      nivel == "Município RJ",
+      sexo == input$sexo_rj,
+      faixa == "todas as idades",
+      ano == input$ano_rj
+    ) |>
+    arrange(desc(taxa)) |>
+    transmute(
+      Município = local,
+      Óbitos = n,
+      População = populacao,
+      `Taxa por 100 mil` = round(taxa, 2)
+    ) |>
+    datatable(
+      rownames = FALSE,
+      options = list(pageLength = 5, scrollX = TRUE, autoWidth = TRUE),
+      filter = "top"
+    )
+})
+
+output$top5_municipios <- renderPlotly({
+
+  df <- dados_cancer |>
+    filter(
+      nivel == "Município RJ",
+      sexo == input$sexo_rj,
+      faixa == "todas as idades",
+      ano == input$ano_rj
+    ) |>
+    arrange(taxa) |>
+    slice_tail(n = 5)
+
+  df$local <- factor(df$local, levels = df$local)
+
+  p <- ggplot(
+    df,
+    aes(
+      x = taxa,
+      y = local,
+      text = paste0(
+        local,
+        "<br>Taxa: ", round(taxa,2),
+        "<br>Óbitos: ", n
+      )
+    )
+  ) +
+    geom_col(fill = "#3f2c70") +
+    labs(
+      x = "Taxa por 100 mil habitantes",
+      y = NULL
+    ) +
+    theme_minimal()
+
+  ggplotly(p, tooltip = "text") |>
+    layout(
+      margin = list(l = 120, r = 20, b = 50, t = 20)
+    )
+
+})
+
+```
+
